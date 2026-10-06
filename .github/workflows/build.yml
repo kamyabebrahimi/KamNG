@@ -211,6 +211,7 @@ jobs:
       run: |
         printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
         chmod 755 gradlew
+        ./gradlew --no-daemon :app:testPlaystoreDebugUnitTest --tests com.v2ray.ang.fmt.NativeEngineFmtTest --tests com.v2ray.ang.handler.AngConfigManagerTest --tests com.v2ray.ang.ui.main.MainImportMenuTest --tests com.v2ray.ang.ui.server.SocksEngineViewModelTest
         ./gradlew --no-daemon :app:testPlaystoreDebugUnitTest :app:testFdroidDebugUnitTest :app:compilePlaystoreDebugKotlin :app:compileFdroidDebugKotlin
           ./gradlew --no-daemon :app:lintPlaystoreDebug :app:lintFdroidDebug
         ./gradlew --no-daemon :app:assemblePlaystoreDebug :app:assembleFdroidDebug -PkamngVersion=0.2.1
