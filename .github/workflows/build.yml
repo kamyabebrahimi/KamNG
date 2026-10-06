@@ -45,9 +45,11 @@ jobs:
     # KAMNG_BOOTSTRAP_START
     - name: Apply reviewed KamNG source patch
       run: |
-        sed -i 's/\r$//' .github/workflows/kamng-source.patch
-        git apply --check .github/workflows/kamng-source.patch
-        git apply .github/workflows/kamng-source.patch
+        if [ ! -f scripts/validate-kamng.py ]; then
+          sed -i 's/\r$//' .github/workflows/kamng-source.patch
+          git apply --check .github/workflows/kamng-source.patch
+          git apply .github/workflows/kamng-source.patch
+        fi
     # KAMNG_BOOTSTRAP_END
 
     - name: Setup Android SDK
@@ -63,9 +65,11 @@ jobs:
           --channel=0 \
           --install "ndk;30.0.16248370"
         echo "NDK_HOME=$ANDROID_HOME/ndk/30.0.16248370" >> $GITHUB_ENV
-        sed -i '10i\
-        \
-            ndkVersion = "30.0.16248370"' ${{ github.workspace }}/V2rayNG/app/build.gradle.kts
+        if ! grep -q 'ndkVersion' V2rayNG/app/build.gradle.kts; then
+          sed -i '10i\
+          \
+              ndkVersion = "30.0.16248370"' V2rayNG/app/build.gradle.kts
+        fi
 
     - name: Restore cached libhevtun
       id: cache-libhevtun-restore
@@ -235,22 +239,15 @@ jobs:
     # KAMNG_PROMOTION_START
     - name: Save tested KamNG source to the fork
       run: |
-        python3 - <<'PY'
-        from pathlib import Path
-        file = Path(".github/workflows/build.yml")
-        content = file.read_text(encoding="utf-8")
-        for start, end in [("    # KAMNG_BOOTSTRAP_START", "    # KAMNG_BOOTSTRAP_END"), ("    # KAMNG_PROMOTION_START", "    # KAMNG_PROMOTION_END")]:
-            begin = content.index(start)
-            finish = content.index(end, begin) + len(end)
-            content = content[:begin] + content[finish:]
-        file.write_text(content, encoding="utf-8")
-        Path(".github/workflows/kamng-source.patch").unlink()
-        PY
         git config user.name 'github-actions[bot]'
         git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-        git add -- 'V2rayNG/app/build.gradle.kts' 'V2rayNG/app/src/dev/res/values/strings.xml' 'V2rayNG/app/src/fdroid/res/values/strings.xml' 'V2rayNG/app/src/main/res/values-ar/strings.xml' 'V2rayNG/app/src/main/res/values-bn/strings.xml' 'V2rayNG/app/src/main/res/values-bqi-rIR/strings.xml' 'V2rayNG/app/src/main/res/values-fa/strings.xml' 'V2rayNG/app/src/main/res/values-ru/strings.xml' 'V2rayNG/app/src/main/res/values-vi/strings.xml' 'V2rayNG/app/src/main/res/values-zh-rCN/strings.xml' 'V2rayNG/app/src/main/res/values-zh-rTW/strings.xml' 'V2rayNG/app/src/main/res/values/strings.xml' 'V2rayNG/app/src/pre_release/res/values/strings.xml' 'V2rayNG/app/src/main/res/xml/shortcuts.xml' 'V2rayNG/app/src/fdroid/res/xml/shortcuts.xml' 'V2rayNG/app/src/main/java/com/v2ray/ang/AppConfig.kt' 'V2rayNG/app/src/main/assets/custom_routing_white_iran' 'scripts/validate-kamng.py' 'V2rayNG/app/src/test/java/com/v2ray/ang/handler/KamNGPresetTest.kt' 'README.md' '.github/workflows/build.yml' '.github/workflows/kamng-source.patch'
+        git add -- 'V2rayNG/app/build.gradle.kts' 'V2rayNG/app/src/dev/res/values/strings.xml' 'V2rayNG/app/src/fdroid/res/values/strings.xml' 'V2rayNG/app/src/main/res/values-ar/strings.xml' 'V2rayNG/app/src/main/res/values-bn/strings.xml' 'V2rayNG/app/src/main/res/values-bqi-rIR/strings.xml' 'V2rayNG/app/src/main/res/values-fa/strings.xml' 'V2rayNG/app/src/main/res/values-ru/strings.xml' 'V2rayNG/app/src/main/res/values-vi/strings.xml' 'V2rayNG/app/src/main/res/values-zh-rCN/strings.xml' 'V2rayNG/app/src/main/res/values-zh-rTW/strings.xml' 'V2rayNG/app/src/main/res/values/strings.xml' 'V2rayNG/app/src/pre_release/res/values/strings.xml' 'V2rayNG/app/src/main/res/xml/shortcuts.xml' 'V2rayNG/app/src/fdroid/res/xml/shortcuts.xml' 'V2rayNG/app/src/main/java/com/v2ray/ang/AppConfig.kt' 'V2rayNG/app/src/main/assets/custom_routing_white_iran' 'scripts/validate-kamng.py' 'V2rayNG/app/src/test/java/com/v2ray/ang/handler/KamNGPresetTest.kt' 'README.md'
         test -z "$(git diff --cached --name-only -- ':(glob)**/AGENTS.md' ':(glob)**/CLAUDE.md' ':(glob)**/GEMINI.md' .github/copilot-instructions.md)"
         git diff --cached --check
+        if git diff --cached --quiet; then
+          echo 'KamNG source is already saved.'
+          exit 0
+        fi
         git commit -m 'Apply tested KamNG identity and routing presets'
         git push origin HEAD:my-releases
     # KAMNG_PROMOTION_END
