@@ -1,3 +1,76 @@
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/core/NativeEngineProbe.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/core/NativeEngineProbe.kt
+index 7858dd89..e1ae4750 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/core/NativeEngineProbe.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/core/NativeEngineProbe.kt
+@@ -9,7 +9,7 @@ import kotlinx.coroutines.runInterruptible
+ import kotlinx.coroutines.withTimeoutOrNull
+ 
+ object NativeEngineProbe {
+-    suspend fun measure(context: Context, guid: String, result: ConfigResult, test: (String) -> Long): Long =
++    suspend fun measure(context: Context, guid: String, result: ConfigResult, test: suspend (String) -> Long): Long =
+         withTimeoutOrNull(if (result.nativeCores.any { it.engine == "cottendns" }) 200000 else 30000) {
+             coroutineScope {
+                 val cores = result.nativeCores
+@@ -21,12 +21,28 @@ object NativeEngineProbe {
+                 }
+                 val content = NativeEngineConfig.remap(result.content, ports)
+                 val session = NativeEngineSession(context, guid, this) { }
+-                try {
+-                    runInterruptible(Dispatchers.IO) {
+-                        session.start(cores.map { it.copy(port = ports.getValue(it.port)) }, content)
+-                        test(content)
+-                    }
+-                } finally { session.close() }
++                runOwnedProbe(
++                    content,
++                    start = {
++                        runInterruptible(Dispatchers.IO) {
++                            session.start(cores.map { it.copy(port = ports.getValue(it.port)) }, content)
++                        }
++                    },
++                    stop = { session.close() },
++                    test = test
++                )
+             }
+         } ?: -1L
++
++    internal suspend fun runOwnedProbe(
++        content: String,
++        start: suspend () -> Unit,
++        stop: () -> Unit,
++        test: suspend (String) -> Long
++    ): Long = try {
++        start()
++        test(content)
++    } finally {
++        stop()
++    }
+ }
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/service/RealPingWorkerService.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/service/RealPingWorkerService.kt
+index 21ab4a5b..62cda0ac 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/service/RealPingWorkerService.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/service/RealPingWorkerService.kt
+@@ -129,11 +129,16 @@ class RealPingWorkerService(
+             return retFailure
+         }
+         if (configResult.nativeCores.isNotEmpty()) {
+-            suspend fun nativeProbe(): Long = com.v2ray.ang.core.NativeEngineProbe.measure(context, guid, configResult) { content ->
+-                CoreNativeManager.measureOutboundDelay(content, SettingsManager.getDelayTestUrl(), batch)
++            return com.v2ray.ang.core.NativeEngineProbe.measure(context, guid, configResult) { content ->
++                suspend fun probe(): Long = kotlinx.coroutines.runInterruptible(kotlinx.coroutines.Dispatchers.IO) {
++                    CoreNativeManager.measureOutboundDelay(content, SettingsManager.getDelayTestUrl(), batch)
++                }
++                val combinedAether = configResult.aetherCore
++                // Start the exit tunnel from the remapped configuration after its native transport is ready.
++                if (combinedAether == null) probe() else {
++                    AetherDelayTester.measureVia(context, guid, combinedAether, content) { _, _ -> probe() }
++                }
+             }
+-            val combinedAether = configResult.aetherCore
+-            return if (combinedAether == null) nativeProbe() else AetherDelayTester.measureVia(context, guid, combinedAether, configResult.content) { _, _ -> nativeProbe() }
+         }
+         val aether = configResult.aetherCore
+         if (aether != null) {
 diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/server/SocksEngineViewModel.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/server/SocksEngineViewModel.kt
 index 3623e364..13804851 100644
 --- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/server/SocksEngineViewModel.kt
@@ -29,6 +102,94 @@ index 3623e364..13804851 100644
                  mutableState.value = mutableState.value.copy(saving = false, savedGuid = id)
              } catch (e: CancellationException) {
                  throw e
+diff --git a/V2rayNG/app/src/test/java/com/v2ray/ang/core/NativeEngineProbeTest.kt b/V2rayNG/app/src/test/java/com/v2ray/ang/core/NativeEngineProbeTest.kt
+new file mode 100644
+index 00000000..c654926e
+--- /dev/null
++++ b/V2rayNG/app/src/test/java/com/v2ray/ang/core/NativeEngineProbeTest.kt
+@@ -0,0 +1,82 @@
++package com.v2ray.ang.core
++
++import kotlinx.coroutines.ExperimentalCoroutinesApi
++import kotlinx.coroutines.awaitCancellation
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.test.runCurrent
++import kotlinx.coroutines.test.runTest
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++@OptIn(ExperimentalCoroutinesApi::class)
++class NativeEngineProbeTest {
++    @Test
++    fun startsTransportBeforePassingRemappedContentToConsumer() = runTest {
++        val events = mutableListOf<String>()
++        val value = NativeEngineProbe.runOwnedProbe(
++            content = "remapped-exit-configuration",
++            start = { events += "start" },
++            stop = { events += "stop" }
++        ) { content ->
++            assertEquals(listOf("start"), events)
++            assertEquals("remapped-exit-configuration", content)
++            events += "probe"
++            42L
++        }
++        assertEquals(42L, value)
++        assertEquals(listOf("start", "probe", "stop"), events)
++    }
++
++    @Test
++    fun closesTransportWhenStartupFailsWithoutRunningConsumer() = runTest {
++        val events = mutableListOf<String>()
++        val failure = IllegalStateException("startup")
++        try {
++            NativeEngineProbe.runOwnedProbe(
++                content = "configuration",
++                start = { events += "start"; throw failure },
++                stop = { events += "stop" }
++            ) { events += "probe"; 0L }
++            throw AssertionError("Expected startup failure")
++        } catch (error: IllegalStateException) {
++            assertTrue(error === failure)
++        }
++        assertEquals(listOf("start", "stop"), events)
++    }
++
++    @Test
++    fun closesTransportWhenConsumerFails() = runTest {
++        val events = mutableListOf<String>()
++        val failure = IllegalStateException("probe")
++        try {
++            NativeEngineProbe.runOwnedProbe(
++                content = "configuration",
++                start = { events += "start" },
++                stop = { events += "stop" }
++            ) { events += "probe"; throw failure }
++            throw AssertionError("Expected probe failure")
++        } catch (error: IllegalStateException) {
++            assertTrue(error === failure)
++        }
++        assertEquals(listOf("start", "probe", "stop"), events)
++    }
++
++    @Test
++    fun closesTransportOnSuspendedConsumerCancellation() = runTest {
++        val events = mutableListOf<String>()
++        val job = launch {
++            NativeEngineProbe.runOwnedProbe(
++                content = "configuration",
++                start = { events += "start" },
++                stop = { events += "stop" }
++            ) { events += "probe"; awaitCancellation() }
++        }
++        runCurrent()
++        assertEquals(listOf("start", "probe"), events)
++        job.cancel()
++        job.join()
++        assertTrue(job.isCancelled)
++        assertEquals(listOf("start", "probe", "stop"), events)
++    }
++}
 diff --git a/V2rayNG/app/src/test/java/com/v2ray/ang/ui/server/SocksEngineViewModelTest.kt b/V2rayNG/app/src/test/java/com/v2ray/ang/ui/server/SocksEngineViewModelTest.kt
 index ffe38ade..cc11a05a 100644
 --- a/V2rayNG/app/src/test/java/com/v2ray/ang/ui/server/SocksEngineViewModelTest.kt
@@ -78,3 +239,12 @@ index ffe38ade..cc11a05a 100644
 +        assertNull(repository.savedWithGuid)
 +    }
  }
+diff --git a/native/kamng-task-paths.txt b/native/kamng-task-paths.txt
+index 6bd708e4..8b771394 100644
+--- a/native/kamng-task-paths.txt
++++ b/native/kamng-task-paths.txt
+@@ -43,3 +43,4 @@ native/kamng-task-paths.txt
+ scripts/build-kamng-engines.sh
+ scripts/validate-kamng-engines.py
+ scripts/validate-kamng.py
++V2rayNG/app/src/test/java/com/v2ray/ang/core/NativeEngineProbeTest.kt
