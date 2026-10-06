@@ -9,7 +9,7 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeoutOrNull
 
 object NativeEngineProbe {
-    suspend fun measure(context: Context, guid: String, result: ConfigResult, test: (String) -> Long): Long =
+    suspend fun measure(context: Context, guid: String, result: ConfigResult, test: suspend (String) -> Long): Long =
         withTimeoutOrNull(if (result.nativeCores.any { it.engine == "cottendns" }) 200000 else 30000) {
             coroutineScope {
                 val cores = result.nativeCores
@@ -21,12 +21,28 @@ object NativeEngineProbe {
                 }
                 val content = NativeEngineConfig.remap(result.content, ports)
                 val session = NativeEngineSession(context, guid, this) { }
-                try {
-                    runInterruptible(Dispatchers.IO) {
-                        session.start(cores.map { it.copy(port = ports.getValue(it.port)) }, content)
-                        test(content)
-                    }
-                } finally { session.close() }
+                runOwnedProbe(
+                    content,
+                    start = {
+                        runInterruptible(Dispatchers.IO) {
+                            session.start(cores.map { it.copy(port = ports.getValue(it.port)) }, content)
+                        }
+                    },
+                    stop = { session.close() },
+                    test = test
+                )
             }
         } ?: -1L
+
+    internal suspend fun runOwnedProbe(
+        content: String,
+        start: suspend () -> Unit,
+        stop: () -> Unit,
+        test: suspend (String) -> Long
+    ): Long = try {
+        start()
+        test(content)
+    } finally {
+        stop()
+    }
 }

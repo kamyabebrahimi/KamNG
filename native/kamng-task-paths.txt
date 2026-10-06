@@ -43,3 +43,4 @@ native/kamng-task-paths.txt
 scripts/build-kamng-engines.sh
 scripts/validate-kamng-engines.py
 scripts/validate-kamng.py
+V2rayNG/app/src/test/java/com/v2ray/ang/core/NativeEngineProbeTest.kt

@@ -94,15 +94,15 @@ class SocksEngineViewModel @JvmOverloads constructor(
     private fun load(action: SocksEngineAction.Load) {
         if (loaded) return
         loaded = true
-        guid = action.guid
+        guid = savedState.get<String>("guid") ?: action.guid
         operation = viewModelScope.launch {
             try {
                 val profile = withContext(parserDispatcher) {
                     savedState.get<String>("profile")?.let { JsonUtil.fromJsonSafe(it, ProfileItem::class.java) }
-                } ?: repository.load(guid) ?: ProfileItem.create(EConfigType.SOCKS).apply {
+                } ?: if (guid.isBlank()) ProfileItem.create(EConfigType.SOCKS).apply {
                     subscriptionId = action.subscriptionId.orEmpty()
                     serverPort = "1080"
-                }
+                } else repository.load(guid) ?: error("Profile no longer exists")
                 mutableState.value = SocksEngineState(loading = false, profile = profile)
             } catch (e: CancellationException) {
                 throw e
@@ -126,6 +126,7 @@ class SocksEngineViewModel @JvmOverloads constructor(
             try {
                 val id = repository.save(guid, profile)
                 guid = id
+                savedState["guid"] = id
                 mutableState.value = mutableState.value.copy(saving = false, savedGuid = id)
             } catch (e: CancellationException) {
                 throw e

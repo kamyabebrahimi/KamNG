@@ -129,11 +129,16 @@ class RealPingWorkerService(
             return retFailure
         }
         if (configResult.nativeCores.isNotEmpty()) {
-            suspend fun nativeProbe(): Long = com.v2ray.ang.core.NativeEngineProbe.measure(context, guid, configResult) { content ->
-                CoreNativeManager.measureOutboundDelay(content, SettingsManager.getDelayTestUrl(), batch)
+            return com.v2ray.ang.core.NativeEngineProbe.measure(context, guid, configResult) { content ->
+                suspend fun probe(): Long = kotlinx.coroutines.runInterruptible(kotlinx.coroutines.Dispatchers.IO) {
+                    CoreNativeManager.measureOutboundDelay(content, SettingsManager.getDelayTestUrl(), batch)
+                }
+                val combinedAether = configResult.aetherCore
+                // Start the exit tunnel from the remapped configuration after its native transport is ready.
+                if (combinedAether == null) probe() else {
+                    AetherDelayTester.measureVia(context, guid, combinedAether, content) { _, _ -> probe() }
+                }
             }
-            val combinedAether = configResult.aetherCore
-            return if (combinedAether == null) nativeProbe() else AetherDelayTester.measureVia(context, guid, combinedAether, configResult.content) { _, _ -> nativeProbe() }
         }
         val aether = configResult.aetherCore
         if (aether != null) {

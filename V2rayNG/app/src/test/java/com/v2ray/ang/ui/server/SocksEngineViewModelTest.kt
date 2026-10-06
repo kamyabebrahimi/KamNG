@@ -15,6 +15,7 @@ class SocksEngineViewModelTest {
     private class Repository : SocksEngineRepository {
         var profile: ProfileItem? = null
         var failLoad = false
+        var savedWithGuid: String? = null
         var failSave = false
         var canDelete = true
         var failDelete = false
@@ -25,6 +26,7 @@ class SocksEngineViewModelTest {
         override suspend fun save(guid: String, profile: ProfileItem): String {
             if (failSave) error("save failure")
             this.profile = profile
+            savedWithGuid = guid
             return guid.ifBlank { "stable-guid" }
         }
         override suspend fun delete(guid: String): Boolean {
@@ -54,9 +56,11 @@ class SocksEngineViewModelTest {
         assertEquals("subscription", repository.profile?.subscriptionId)
         assertEquals("127.0.0.1", repository.profile?.server)
         val restored = SocksEngineViewModel(saved, repository, dispatcher) { _, _ -> }
-        restored.onAction(SocksEngineAction.Load("stable-guid", null))
+        restored.onAction(SocksEngineAction.Load("", null))
         advanceUntilIdle()
         assertEquals("amneziawg", restored.state.value.profile.nativeEngine)
+        restored.onAction(SocksEngineAction.Save); advanceUntilIdle()
+        assertEquals("stable-guid", repository.savedWithGuid)
     }
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test fun emptyInvalidAndFailureBranchesDoNotReportSaved() = runTest(dispatcher) {
@@ -113,5 +117,16 @@ class SocksEngineViewModelTest {
         repository.failDelete = false; repository.canDelete = true
         model.onAction(SocksEngineAction.Delete); advanceUntilIdle()
         assertEquals("existing-guid", model.state.value.deletedGuid)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun missingExistingProfileFailsInsteadOfCreatingAReplacement() = runTest(dispatcher) {
+        val repository = Repository()
+        val model = SocksEngineViewModel(SavedStateHandle(), repository, dispatcher) { _, _ -> }
+        model.onAction(SocksEngineAction.Load("missing-guid", null)); advanceUntilIdle()
+        assertEquals(SocksEngineState.Error.LOAD, model.state.value.error)
+        model.onAction(SocksEngineAction.Save); advanceUntilIdle()
+        assertNull(model.state.value.savedGuid)
+        assertNull(repository.savedWithGuid)
     }
 }
