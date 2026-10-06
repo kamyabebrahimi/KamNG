@@ -45,6 +45,7 @@ jobs:
     # KAMNG_BOOTSTRAP_START
     - name: Apply reviewed KamNG source patch
       run: |
+        sed -i 's/\r$//' .github/workflows/kamng-source.patch
         git apply --check .github/workflows/kamng-source.patch
         git apply .github/workflows/kamng-source.patch
     # KAMNG_BOOTSTRAP_END
