@@ -44,3 +44,8 @@ scripts/build-kamng-engines.sh
 scripts/validate-kamng-engines.py
 scripts/validate-kamng.py
 V2rayNG/app/src/test/java/com/v2ray/ang/core/NativeEngineProbeTest.kt
+V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainContract.kt
+V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainImportMenu.kt
+V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt
+V2rayNG/app/src/test/java/com/v2ray/ang/handler/AngConfigManagerTest.kt
+V2rayNG/app/src/test/java/com/v2ray/ang/ui/main/MainImportMenuTest.kt

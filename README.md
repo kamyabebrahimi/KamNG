@@ -36,3 +36,18 @@ PattNG by patterniha and v2rayNG by 2dust and contributors are retained as upstr
 AmneziaWG and CottenDNS are selectable in the SOCKS editor. See native/README.md for setup, pinned sources and architecture. The build runs native/JVM tests and packages both engines for all four ABIs.
 
 Not run: physical-device VPN, proxy-only and root connections; screen recreation, TalkBack, keyboard/D-pad and IME traversal; live server handover and stop/restart races. No Android device or emulator is attached.
+
+## KamNG 0.2.1: native import and editor entry points
+
+- Import an AmneziaWG .conf file or paste its complete contents using the regular import actions.
+  The importer recognizes AWG parameters such as Jc, Jmin, Jmax, S1-S4, H1-H4 and I1-I5,
+  or an explicit AmneziaWG header comment, and retains the full file in the native profile.
+- A plain WireGuard file without AWG fields or a marker continues to use the ordinary WireGuard parser.
+  Invalid AWG files are rejected instead of silently dropping their advanced settings.
+- The Add menu has direct **AmneziaWG** and **CottenDNS** entries; the corresponding engine is already selected.
+- Automatic raw AWG imports receive distinct local ports to avoid conflicting with existing native profiles.
+- Supported here: raw .conf content. Amnezia vpn:// containers are not decoded by this importer.
+
+**Not run:** Android file/clipboard import and reopen/edit persistence; direct engine navigation by touch,
+keyboard and D-pad; TalkBack labels/focus; editor recreation and IME traversal.
+No Android device or emulator is connected.

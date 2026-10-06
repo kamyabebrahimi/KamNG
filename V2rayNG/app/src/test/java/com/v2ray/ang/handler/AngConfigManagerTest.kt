@@ -70,4 +70,27 @@ class AngConfigManagerTest {
 
         assertEquals("example.com", profile.server)
     }
+
+    @Test
+    fun rawTunnelImportSelectsNativeAmneziaOnlyWhenItsSettingsArePresent() {
+        val key = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 7 })
+        val wg = "[Interface]\nPrivateKey=$key\nAddress=10.0.0.2/32\n[Peer]\nPublicKey=$key\nEndpoint=example.test:51820\nAllowedIPs=0.0.0.0/0\n"
+        val awg = wg.replace("[Peer]", "Jc=7\nH1=123\n[Peer]")
+        assertEquals(EConfigType.WIREGUARD, AngConfigManager.parseTunnelConfiguration(wg).configType)
+        val native = AngConfigManager.parseTunnelConfiguration(awg)
+        assertEquals("amneziawg", native.nativeEngine)
+        assertEquals(awg, native.nativeEngineConfig)
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException::class.java) {
+            AngConfigManager.parseTunnelConfiguration(awg.replace(key, "invalid"))
+        }
+    }
+
+    @Test
+    fun automaticNativePortsAvoidExistingProfilesAndReportExhaustion() {
+        assertEquals(18001, com.v2ray.ang.core.NativeEngineConfig.availableAmneziaPort(emptySet()))
+        assertEquals(18003, com.v2ray.ang.core.NativeEngineConfig.availableAmneziaPort(setOf(18000, 18001, 18002)))
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException::class.java) {
+            com.v2ray.ang.core.NativeEngineConfig.availableAmneziaPort((18001..65535).toSet())
+        }
+    }
 }

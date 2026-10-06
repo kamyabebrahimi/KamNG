@@ -49,6 +49,8 @@ import com.v2ray.ang.ui.subscription.SubSettingActivity
 import com.v2ray.ang.ui.userasset.UserAssetActivity
 import com.v2ray.ang.util.LogUtil
 import com.v2ray.ang.util.Utils
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -116,7 +118,7 @@ class MainActivity : HelperBaseComponentActivity() {
                     MainAction.ImportQRcode -> importQRcode()
                     MainAction.ImportClipboard -> importClipboard()
                     MainAction.ImportConfigLocal -> importConfigLocal()
-                    is MainAction.ImportManually -> importManually(action.type)
+                    is MainAction.ImportManually -> importManually(action.type, action.nativeEngine)
                     MainAction.RestartService -> LauncherManager.restartServiceOrStart(this, ::requestServiceStart)
                     MainAction.LocateSelectedServer -> mainViewModel.triggerLocateSelectedServer()
                     is MainAction.SelectServer -> setSelectServer(action.guid)
@@ -203,7 +205,7 @@ class MainActivity : HelperBaseComponentActivity() {
         LauncherManager.startService(this)
     }
 
-    private fun importManually(createConfigType: Int) {
+    private fun importManually(createConfigType: Int, nativeEngine: String? = null) {
         val intent = when (createConfigType) {
             EConfigType.POLICYGROUP.value -> Intent(this, ServerGroupActivity::class.java)
             EConfigType.PROXYCHAIN.value -> Intent(this, ServerProxyChainActivity::class.java)
@@ -221,6 +223,7 @@ class MainActivity : HelperBaseComponentActivity() {
             }
         }.apply {
             putExtra("subscriptionId", mainViewModel.uiState.value.selectedGroupId)
+            putExtra("nativeEngine", nativeEngine)
         }
         profileEditorLauncher.launch(intent)
     }
@@ -242,15 +245,25 @@ class MainActivity : HelperBaseComponentActivity() {
         }
     }
 
+    private var localImportJob: Job? = null
+
     private fun importConfigLocal() {
         launchFileChooser { uri ->
             if (uri == null) return@launchFileChooser
-            try {
-                contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
-                    mainViewModel.onAction(MainAction.ImportBatchConfig(reader.readText()))
+            localImportJob?.cancel()
+            localImportJob = lifecycleScope.launch {
+                try {
+                    val text = withContext(Dispatchers.IO) {
+                        contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                            ?: error("Configuration file could not be opened")
+                    }
+                    mainViewModel.onAction(MainAction.ImportBatchConfig(text))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    LogUtil.e(AppConfig.TAG, "Main configuration file import failed", e)
+                    toastError(R.string.toast_failure)
                 }
-            } catch (e: Exception) {
-                LogUtil.e(AppConfig.TAG, "Failed to read content from URI", e)
             }
         }
     }

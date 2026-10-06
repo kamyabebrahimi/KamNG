@@ -14,8 +14,8 @@ android {
         applicationId = "com.kamyab.kamng"
         minSdk = 29
         targetSdk = 37
-        versionCode = 2
-        versionName = (project.findProperty("kamngVersion") as? String)?.takeIf { it.isNotBlank() } ?: "0.2.0"
+        versionCode = 3
+        versionName = (project.findProperty("kamngVersion") as? String)?.takeIf { it.isNotBlank() } ?: "0.2.1"
 
         val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
         splits {

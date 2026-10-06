@@ -40,4 +40,13 @@ class MainImportMenuTest {
         )
         assertEquals(expected, serverMenuActions(isComplexProfile = true, includeManagementActions = true))
     }
+
+    @Test
+    fun nativeEnginesHaveDirectMenuEntriesAndOrdinarySocksKeepsItsDefault() {
+        assertEquals(MainAction.ImportManually(com.v2ray.ang.enums.EConfigType.SOCKS.value, "amneziawg"), ImportMenuAction.AmneziaWG.action)
+        assertEquals(MainAction.ImportManually(com.v2ray.ang.enums.EConfigType.SOCKS.value, "cottendns"), ImportMenuAction.CottenDNS.action)
+        assertEquals(MainAction.ImportManually(com.v2ray.ang.enums.EConfigType.SOCKS.value), ImportMenuAction.Socks.action)
+        assertEquals(com.v2ray.ang.R.string.kamng_engine_awg, ImportMenuAction.AmneziaWG.labelRes)
+        assertEquals(com.v2ray.ang.R.string.kamng_engine_cotten, ImportMenuAction.CottenDNS.labelRes)
+    }
 }

@@ -56,7 +56,7 @@ sealed interface MainAction {
     data object ImportQRcode : MainAction
     data object ImportClipboard : MainAction
     data object ImportConfigLocal : MainAction
-    data class ImportManually(val type: Int) : MainAction
+    data class ImportManually(val type: Int, val nativeEngine: String? = null) : MainAction
     data object RestartService : MainAction
     data object LocateSelectedServer : MainAction
 

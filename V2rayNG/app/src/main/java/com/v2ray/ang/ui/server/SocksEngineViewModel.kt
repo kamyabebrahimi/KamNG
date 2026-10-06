@@ -33,7 +33,7 @@ data class SocksEngineState(
 }
 
 sealed interface SocksEngineAction {
-    data class Load(val guid: String, val subscriptionId: String?) : SocksEngineAction
+    data class Load(val guid: String, val subscriptionId: String?, val nativeEngine: String? = null) : SocksEngineAction
     data class Change(val field: Field, val value: String) : SocksEngineAction
     data object Save : SocksEngineAction
     data object Delete : SocksEngineAction
@@ -102,6 +102,13 @@ class SocksEngineViewModel @JvmOverloads constructor(
                 } ?: if (guid.isBlank()) ProfileItem.create(EConfigType.SOCKS).apply {
                     subscriptionId = action.subscriptionId.orEmpty()
                     serverPort = "1080"
+                    action.nativeEngine?.let { engine ->
+                        require(engine in setOf("amneziawg", "cottendns")) { "Unsupported native editor engine" }
+                        val initial = change(this, SocksEngineAction.Field.ENGINE, engine)
+                        nativeEngine = initial.nativeEngine
+                        server = initial.server
+                        serverPort = initial.serverPort
+                    }
                 } else repository.load(guid) ?: error("Profile no longer exists")
                 mutableState.value = SocksEngineState(loading = false, profile = profile)
             } catch (e: CancellationException) {

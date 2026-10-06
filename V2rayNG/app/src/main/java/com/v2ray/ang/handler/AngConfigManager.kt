@@ -187,6 +187,9 @@ object AngConfigManager {
      */
     fun importBatchConfig(server: String?, subid: String, append: Boolean): Pair<Int, Int> {
         return try {
+            if (com.v2ray.ang.fmt.NativeEngineFmt.isTunnelConfiguration(server.orEmpty())) {
+                return parseCustomConfigServer(server, subid, append) to 0
+            }
             var count = parseBatchConfig(Utils.decode(server), subid, append)
             if (count <= 0) {
                 count = parseBatchConfig(server, subid, append)
@@ -333,7 +336,8 @@ object AngConfigManager {
         if (server == null) {
             return 0
         }
-        if (server.contains("inbounds")
+        if (!com.v2ray.ang.fmt.NativeEngineFmt.isTunnelConfiguration(server)
+            && server.contains("inbounds")
             && server.contains("outbounds")
             && server.contains("routing")
         ) {
@@ -377,13 +381,20 @@ object AngConfigManager {
                 LogUtil.e(AppConfig.TAG, "Failed to parse custom config server as single config", e)
             }
             return 0
-        } else if (server.startsWith("[Interface]") && server.contains("[Peer]")) {
+        } else if (com.v2ray.ang.fmt.NativeEngineFmt.isTunnelConfiguration(server)) {
             try {
-                val config = WireguardFmt.parseWireguardConfFile(server)
+                val config = parseTunnelConfiguration(server)
+                if (config.nativeEngine == "amneziawg") {
+                    val occupied = MmkvManager.decodeAllServerList().mapNotNull { guid ->
+                        MmkvManager.decodeServerConfig(guid)?.takeIf { !it.nativeEngine.isNullOrBlank() }
+                            ?.serverPort?.toIntOrNull()
+                    }.toSet()
+                    config.serverPort = com.v2ray.ang.core.NativeEngineConfig.availableAmneziaPort(occupied).toString()
+                }
                 config.subscriptionId = subid
                 config.description = generateDescription(config)
                 commitProfiles(
-                    configs = listOf(ParsedProfile(config, server)),
+                    configs = listOf(ParsedProfile(config, if (config.nativeEngine.isNullOrBlank()) server else null)),
                     subid = subid,
                     append = append,
                 )
@@ -391,13 +402,20 @@ object AngConfigManager {
             } catch (e: ProfileStorageException) {
                 throw e
             } catch (e: Exception) {
-                LogUtil.e(AppConfig.TAG, "Failed to parse WireGuard config file", e)
+                LogUtil.e(AppConfig.TAG, "Failed to parse tunnel configuration file", e)
             }
             return 0
         } else {
             return 0
         }
     }
+
+    internal fun parseTunnelConfiguration(server: String): ProfileItem =
+        if (com.v2ray.ang.fmt.NativeEngineFmt.isAmneziaConfiguration(server)) {
+            com.v2ray.ang.fmt.NativeEngineFmt.parseAmneziaConfiguration(server)
+        } else {
+            WireguardFmt.parseWireguardConfFile(server.removePrefix("\uFEFF"))
+        }
 
     /**
      * Parses the configuration from a QR code or string.

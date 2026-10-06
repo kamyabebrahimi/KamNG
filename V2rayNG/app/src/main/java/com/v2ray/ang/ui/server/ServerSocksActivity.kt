@@ -41,7 +41,7 @@ class ServerSocksActivity : BaseComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        model.onAction(SocksEngineAction.Load(guid, intent.getStringExtra("subscriptionId")))
+        model.onAction(SocksEngineAction.Load(guid, intent.getStringExtra("subscriptionId"), intent.getStringExtra("nativeEngine")))
     }
 
     @Composable

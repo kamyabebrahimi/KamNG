@@ -129,4 +129,47 @@ class SocksEngineViewModelTest {
         assertNull(model.state.value.savedGuid)
         assertNull(repository.savedWithGuid)
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun directNativeEntriesSelectTheirEngineWithoutSavingAnEmptyConfiguration() = runTest(dispatcher) {
+        for ((engine, port) in listOf("amneziawg" to "18001", "cottendns" to "18000")) {
+            val repository = Repository()
+            val model = SocksEngineViewModel(SavedStateHandle(), repository, dispatcher) { _, _ -> }
+            model.onAction(SocksEngineAction.Load("", "group", engine)); advanceUntilIdle()
+            assertEquals(engine, model.state.value.profile.nativeEngine)
+            assertEquals(port, model.state.value.profile.serverPort)
+            assertEquals("127.0.0.1", model.state.value.profile.server)
+            assertEquals("group", model.state.value.profile.subscriptionId)
+            model.onAction(SocksEngineAction.Save); advanceUntilIdle()
+            assertEquals(SocksEngineState.Error.INVALID, model.state.value.error)
+            assertNull(repository.savedWithGuid)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun nativeEntryCannotReplaceAnExistingOrRestoredProfileEngine() = runTest(dispatcher) {
+        val profile = ProfileItem.create(EConfigType.SOCKS).apply {
+            nativeEngine = "amneziawg"; nativeEngineConfig = "[Interface]\n[Peer]\n"; serverPort = "18004"
+        }
+        val repository = Repository().apply { this.profile = profile }
+        val existing = SocksEngineViewModel(SavedStateHandle(), repository, dispatcher) { _, _ -> }
+        existing.onAction(SocksEngineAction.Load("guid", null, "cottendns")); advanceUntilIdle()
+        assertEquals("amneziawg", existing.state.value.profile.nativeEngine)
+        assertEquals("18004", existing.state.value.profile.serverPort)
+        val saved = SavedStateHandle(mapOf("profile" to com.v2ray.ang.util.JsonUtil.toJson(profile)))
+        val restored = SocksEngineViewModel(saved, repository, dispatcher) { _, _ -> }
+        restored.onAction(SocksEngineAction.Load("", null, "cottendns")); advanceUntilIdle()
+        assertEquals("amneziawg", restored.state.value.profile.nativeEngine)
+        assertEquals("18004", restored.state.value.profile.serverPort)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun invalidNativeNavigationReportsLoadFailure() = runTest(dispatcher) {
+        val repository = Repository()
+        val model = SocksEngineViewModel(SavedStateHandle(), repository, dispatcher) { _, _ -> }
+        model.onAction(SocksEngineAction.Load("", null, "unknown")); advanceUntilIdle()
+        assertEquals(SocksEngineState.Error.LOAD, model.state.value.error)
+        model.onAction(SocksEngineAction.Save); advanceUntilIdle()
+        assertNull(repository.savedWithGuid)
+    }
 }

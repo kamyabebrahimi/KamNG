@@ -43,7 +43,7 @@ func parseConfig(raw string) (tunnelConfig, error) {
 	scan.Buffer(make([]byte, 4096), 1<<20)
 	for scan.Scan() {
 		line := strings.TrimSpace(strings.SplitN(scan.Text(), "#", 2)[0])
-		if line == "" {
+		if line == "" || strings.HasPrefix(line, ";") {
 			continue
 		}
 		if strings.HasPrefix(line, "[") {
@@ -200,7 +200,7 @@ func orderConfig(raw string) (string, error) {
 	scan.Buffer(make([]byte, 4096), 1<<20)
 	for scan.Scan() {
 		line := strings.TrimSpace(strings.SplitN(scan.Text(), "#", 2)[0])
-		if line == "" {
+		if line == "" || strings.HasPrefix(line, ";") {
 			continue
 		}
 		if strings.HasPrefix(line, "[") {

@@ -18,7 +18,7 @@ data class NativeEngineConfig(
         require(port in 1024..65535) { "Invalid native listener port" }
         require(configuration.isNotBlank() && configuration.length <= 262144) { "Invalid native configuration" }
         if (engine == "amneziawg") {
-            require(configuration.contains("[Interface]") && configuration.contains("[Peer]")) { "AmneziaWG requires Interface and Peer sections" }
+            require(Regex("(?im)^\\s*\\[Interface]\\s*(?:#.*)?$").containsMatchIn(configuration) && Regex("(?im)^\\s*\\[Peer]\\s*(?:#.*)?$").containsMatchIn(configuration)) { "AmneziaWG requires Interface and Peer sections" }
             require(!Regex("(?im)^\\s*(PreUp|PostUp|PreDown|PostDown)\\s*=").containsMatchIn(configuration)) { "Shell hooks are unsupported" }
         } else {
             require(Regex("(?m)^\\s*DOMAINS\\s*=").containsMatchIn(configuration)) { "CottenDNS requires DOMAINS" }
@@ -52,6 +52,9 @@ data class NativeEngineConfig(
 
     companion object {
         const val EXTENSION = "kamngNativeCores"
+
+        fun availableAmneziaPort(occupied: Set<Int>): Int =
+            (18001..65535).firstOrNull { it !in occupied } ?: error("No native listener port available")
 
         fun attach(content: String, cores: List<NativeEngineConfig>): String {
             if (cores.isEmpty()) return content

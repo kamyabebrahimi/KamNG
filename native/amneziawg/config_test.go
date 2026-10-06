@@ -43,3 +43,16 @@ func TestPeerValidation(t *testing.T) {
 		t.Fatal("incomplete second peer accepted")
 	}
 }
+
+func TestImportedINICommentsAndSectionCase(t *testing.T) {
+	raw := "; exported AmneziaWG file\n" + strings.Replace(validConfig, "[Interface]", "[interface] # interface comment", 1)
+	raw = strings.Replace(raw, "[Peer]", "[peer] # peer comment", 1)
+	raw = strings.Replace(raw, "Jc = 4", "Jc = 4 # keep obfuscation", 1)
+	cfg, err := parseConfig(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(cfg.ipc, "jc=4\n") || !strings.Contains(cfg.ipc, "allowed_ip=::/0\n") {
+		t.Fatal("imported tunnel settings lost")
+	}
+}
