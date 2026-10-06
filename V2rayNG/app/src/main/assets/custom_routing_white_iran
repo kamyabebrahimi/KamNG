@@ -4,34 +4,209 @@
     "outboundTag": "direct",
     "protocol": [
       "bittorrent"
-    ]
+    ],
+    "id": "kamng-base-0",
+    "enabled": true
   },
   {
     "remarks": "Block udp443",
     "outboundTag": "block",
     "port": "443",
-    "network": "udp"
+    "network": "udp",
+    "id": "kamng-base-1",
+    "enabled": true
   },
   {
     "remarks": "Block ads",
     "outboundTag": "block",
     "domain": [
       "geosite:category-ads-all"
-    ]
+    ],
+    "id": "kamng-base-2",
+    "enabled": true
   },
   {
     "remarks": "Direct LAN IP",
     "outboundTag": "direct",
     "ip": [
-      "geoip:private"
-    ]
+      "geoip:private",
+      "10.0.0.0/8",
+      "172.16.0.0/12",
+      "192.168.0.0/16",
+      "127.0.0.0/8",
+      "169.254.0.0/16",
+      "::1/128",
+      "fc00::/7",
+      "fe80::/10"
+    ],
+    "id": "kamng-base-3",
+    "enabled": true
   },
   {
     "remarks": "Direct LAN domains",
     "outboundTag": "direct",
     "domain": [
-      "geosite:private"
-    ]
+      "geosite:private",
+      "full:localhost",
+      "domain:local"
+    ],
+    "id": "kamng-base-4",
+    "enabled": true
+  },
+  {
+    "id": "kamng-chatgpt",
+    "remarks": "ChatGPT",
+    "domain": [
+      "domain:openai.com",
+      "domain:chatgpt.com",
+      "domain:oaistatic.com",
+      "domain:oaiusercontent.com",
+      "domain:oaistatsig.com",
+      "full:cdn.openaimerge.com"
+    ],
+    "outboundTag": "proxy",
+    "network": "tcp,udp",
+    "enabled": true
+  },
+  {
+    "id": "kamng-ai",
+    "remarks": "AI Services",
+    "domain": [
+      "domain:openai.com",
+      "domain:chatgpt.com",
+      "domain:oaistatic.com",
+      "domain:oaiusercontent.com",
+      "domain:oaistatsig.com",
+      "full:cdn.openaimerge.com",
+      "domain:claude.ai",
+      "domain:claude.com",
+      "domain:anthropic.com",
+      "full:gemini.google.com",
+      "full:aistudio.google.com",
+      "full:generativelanguage.googleapis.com",
+      "full:copilot.microsoft.com",
+      "full:copilot.cloud.microsoft",
+      "domain:perplexity.ai",
+      "domain:deepseek.com",
+      "domain:grok.com",
+      "domain:x.ai",
+      "domain:mistral.ai",
+      "domain:huggingface.co",
+      "domain:hf.co",
+      "domain:hf.space",
+      "domain:poe.com"
+    ],
+    "outboundTag": "proxy",
+    "network": "tcp,udp",
+    "enabled": true
+  },
+  {
+    "id": "kamng-youtube",
+    "remarks": "YouTube",
+    "domain": [
+      "domain:youtube.com",
+      "domain:youtu.be",
+      "domain:googlevideo.com",
+      "domain:ytimg.com",
+      "domain:youtube-nocookie.com",
+      "domain:youtubei.googleapis.com"
+    ],
+    "outboundTag": "proxy",
+    "network": "tcp,udp",
+    "enabled": true
+  },
+  {
+    "id": "kamng-telegram-domain",
+    "remarks": "Telegram domains",
+    "domain": [
+      "domain:telegram.org",
+      "domain:t.me",
+      "domain:telegram.me",
+      "domain:tdesktop.com"
+    ],
+    "outboundTag": "proxy",
+    "network": "tcp,udp",
+    "enabled": true
+  },
+  {
+    "id": "kamng-telegram-ip",
+    "remarks": "Telegram IP ranges",
+    "ip": [
+      "91.108.56.0/22",
+      "91.108.4.0/22",
+      "91.108.8.0/22",
+      "91.108.16.0/22",
+      "91.108.12.0/22",
+      "149.154.160.0/20",
+      "91.105.192.0/23",
+      "91.108.20.0/22",
+      "185.76.151.0/24",
+      "2001:b28:f23d::/48",
+      "2001:b28:f23f::/48",
+      "2001:67c:4e8::/48",
+      "2001:b28:f23c::/48",
+      "2a0a:f280::/32"
+    ],
+    "outboundTag": "proxy",
+    "network": "tcp,udp",
+    "enabled": true
+  },
+  {
+    "id": "kamng-x",
+    "remarks": "X / Twitter",
+    "domain": [
+      "domain:x.com",
+      "domain:twitter.com",
+      "domain:twimg.com",
+      "domain:t.co"
+    ],
+    "outboundTag": "proxy",
+    "network": "tcp,udp",
+    "enabled": true
+  },
+  {
+    "id": "kamng-ai-support",
+    "remarks": "AI shared login / challenge (optional)",
+    "domain": [
+      "full:accounts.google.com",
+      "full:challenges.cloudflare.com",
+      "full:cdn.workos.com",
+      "full:forwarder.workos.com",
+      "full:setup.workos.com",
+      "full:images.workoscdn.com"
+    ],
+    "outboundTag": "proxy",
+    "network": "tcp,udp",
+    "enabled": false
+  },
+  {
+    "id": "kamng-google",
+    "remarks": "Google",
+    "domain": [
+      "domain:google.com",
+      "domain:googleapis.com",
+      "domain:gstatic.com",
+      "domain:googleusercontent.com"
+    ],
+    "outboundTag": "proxy",
+    "network": "tcp,udp",
+    "enabled": true
+  },
+  {
+    "id": "kamng-gaming",
+    "remarks": "Gaming",
+    "domain": [
+      "domain:steampowered.com",
+      "domain:steamcommunity.com",
+      "domain:steamcontent.com",
+      "domain:steamstatic.com",
+      "domain:epicgames.com",
+      "domain:ea.com",
+      "domain:battle.net"
+    ],
+    "outboundTag": "proxy",
+    "network": "tcp,udp",
+    "enabled": true
   },
   {
     "remarks": "Bypass Iran domains",
@@ -39,13 +214,17 @@
     "domain": [
       "domain:ir",
       "geosite:category-ir"
-    ]
+    ],
+    "id": "kamng-base-5",
+    "enabled": true
   },
   {
     "remarks": "Bypass Iran IP",
     "outboundTag": "direct",
     "ip": [
-       "geoip:ir"
-    ]
+      "geoip:ir"
+    ],
+    "id": "kamng-base-6",
+    "enabled": true
   }
 ]
