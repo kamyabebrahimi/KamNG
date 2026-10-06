@@ -41,4 +41,5 @@ build_awg x86 386 i686-linux-android29-clang
 NDK_ROOT="$ANDROID_HOME/ndk/29.0.14206865" OUTPUT_DIR="$OUTPUT" \
   BUILD_VERSION=f4a22770dcbfb72f5332be0bdf28cb9c3e26a9a9 \
   bash "$SOURCES/CottenDNS/scripts/build-android-client.sh" all
+(cd "$SOURCES/CottenDNS" && go test ./...)
 python3 "$ROOT/scripts/validate-kamng-engines.py"

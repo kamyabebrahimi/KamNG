@@ -64,11 +64,11 @@ class ServerSocksActivity : BaseComponentActivity() {
                     onBackClick = { finish() },
                     actions = {
                         if (guid.isNotBlank() && !intent.getBooleanExtra("isRunning", false)) {
-                            IconButton(onClick = { confirmDelete = true }, enabled = !state.loading && !state.saving) {
+                            IconButton(onClick = { confirmDelete = true }, enabled = !state.loading && !state.saving && state.error != SocksEngineState.Error.LOAD) {
                                 Icon(painterResource(R.drawable.ic_delete_24dp), stringResource(R.string.acc_delete))
                             }
                         }
-                        IconButton(onClick = { model.onAction(SocksEngineAction.Save) }, enabled = !state.loading && !state.saving) {
+                        IconButton(onClick = { model.onAction(SocksEngineAction.Save) }, enabled = !state.loading && !state.saving && state.error != SocksEngineState.Error.LOAD) {
                             Icon(painterResource(R.drawable.ic_fab_check), stringResource(R.string.acc_save))
                         }
                     },
@@ -89,7 +89,7 @@ class ServerSocksActivity : BaseComponentActivity() {
                         SocksEngineState.Error.DELETE -> R.string.kamng_engine_delete_failed
                     }), Modifier.padding(16.dp))
                 }
-                if (!state.loading) {
+                if (!state.loading && state.error != SocksEngineState.Error.LOAD) {
                     FormTextField(stringResource(R.string.server_lab_remarks), profile.remarks, { change(SocksEngineAction.Field.NAME, it) }, enabled = !state.saving)
                     FormDropdownField(stringResource(R.string.kamng_engine_label),
                         labels[engines.indexOf(profile.nativeEngine.orEmpty()).coerceAtLeast(0)], labels,
@@ -111,7 +111,7 @@ class ServerSocksActivity : BaseComponentActivity() {
                     FormTextField(stringResource(R.string.server_lab_port), profile.serverPort.orEmpty(),
                         { change(SocksEngineAction.Field.PORT, it) }, enabled = !state.saving)
                     FormDropdownField(stringResource(R.string.server_lab_target_strategy), profile.targetStrategy ?: "AsIs",
-                        listOf("AsIs", "UseIP", "UseIPv4", "UseIPv6", "ForceIP", "ForceIPv4", "ForceIPv6"),
+                        resources.getStringArray(R.array.target_strategy_values).toList(),
                         { change(SocksEngineAction.Field.TARGET_STRATEGY, it) }, enabled = !state.saving)
                 }
             }

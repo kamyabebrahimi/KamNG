@@ -219,7 +219,7 @@ object CoreServiceManager {
         AetherCoreManager.stop()
 
         try {
-            nativeSession?.close()
+            nativeSession?.closeAndWait()
             nativeSession = null
             if (result.nativeCores.isNotEmpty()) {
                 lateinit var session: NativeEngineSession

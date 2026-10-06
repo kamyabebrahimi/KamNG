@@ -15,7 +15,7 @@ android {
         minSdk = 29
         targetSdk = 37
         versionCode = 2
-        versionName = (project.findProperty("kamngVersion") as? String)?.takeIf { it.isNotBlank() } ?: "0.1.0"
+        versionName = (project.findProperty("kamngVersion") as? String)?.takeIf { it.isNotBlank() } ?: "0.2.0"
 
         val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
         splits {

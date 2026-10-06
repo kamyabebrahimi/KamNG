@@ -3,6 +3,7 @@ package com.v2ray.ang.core
 import com.v2ray.ang.dto.CoreConfigContext
 import com.v2ray.ang.dto.entities.ProfileItem
 import com.v2ray.ang.enums.EConfigType
+import com.v2ray.ang.enums.CoreResolvedType
 import com.v2ray.ang.util.JsonUtil
 
 /** Native profile data is persisted with the SOCKS profile; Xray remains the routing owner. */
@@ -101,9 +102,15 @@ data class NativeEngineConfig(
             return NativeEngineConfig(engine, profile.serverPort?.toIntOrNull() ?: 0, profile.nativeEngineConfig.orEmpty(), profile.nativeEngineResolvers.orEmpty()).also { it.validate() }
         }
 
-        fun resolve(outbounds: List<CoreConfigContext.ResolvedOutbound>): List<NativeEngineConfig> =
-            outbounds.flatMap { it.resolvedProfiles }.mapNotNull(::of).distinct().also { cores ->
+        fun resolve(outbounds: List<CoreConfigContext.ResolvedOutbound>): List<NativeEngineConfig> {
+            outbounds.filter { it.resolvedType == CoreResolvedType.PROXYCHAIN }.forEach { outbound ->
+                require(outbound.resolvedProfiles.dropLast(1).none { !it.nativeEngine.isNullOrBlank() }) {
+                    "A native engine must be the final transport in a proxy chain"
+                }
+            }
+            return outbounds.flatMap { it.resolvedProfiles }.mapNotNull(::of).distinct().also { cores ->
                 require(cores.map { it.port }.distinct().size == cores.size) { "Native listener ports conflict" }
             }
+        }
     }
 }

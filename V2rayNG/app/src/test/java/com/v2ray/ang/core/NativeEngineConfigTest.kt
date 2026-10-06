@@ -45,4 +45,18 @@ class NativeEngineConfigTest {
     @Test fun oldSocksProfilesRemainExternal() {
         assertNull(NativeEngineConfig.of(ProfileItem.create(EConfigType.SOCKS).apply { server = "proxy.example"; serverPort = "1080" }))
     }
+
+    @Test fun nativeChainTransportMustBeLastAndOrdinaryChainsArePreserved() {
+        val native = ProfileItem.create(EConfigType.SOCKS).apply {
+            nativeEngine = "amneziawg"; nativeEngineConfig = awg.configuration; serverPort = "18001"
+        }
+        val ordinary = ProfileItem.create(EConfigType.SOCKS).apply { server = "proxy.example"; serverPort = "1080" }
+        fun chain(profiles: List<ProfileItem>) =
+            CoreConfigContext.ResolvedOutbound("proxy", ordinary, profiles, CoreResolvedType.PROXYCHAIN)
+        assertEquals(listOf(awg), NativeEngineConfig.resolve(listOf(chain(listOf(ordinary, native)))))
+        assertTrue(NativeEngineConfig.resolve(listOf(chain(listOf(ordinary, ordinary.copy())))).isEmpty())
+        assertThrows(IllegalArgumentException::class.java) {
+            NativeEngineConfig.resolve(listOf(chain(listOf(native, ordinary))))
+        }
+    }
 }

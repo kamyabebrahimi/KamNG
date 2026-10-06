@@ -71,6 +71,7 @@ class SocksEngineViewModel @JvmOverloads constructor(
     private var guid = ""
     private var loaded = false
     private var operation: Job? = null
+    private var draftSave: Job? = null
 
     fun onAction(action: SocksEngineAction) {
         when (action) {
@@ -78,8 +79,12 @@ class SocksEngineViewModel @JvmOverloads constructor(
             is SocksEngineAction.Change -> {
                 if (mutableState.value.loading || mutableState.value.saving || mutableState.value.error == SocksEngineState.Error.LOAD) return
                 val changed = change(mutableState.value.profile, action.field, action.value)
-                savedState["profile"] = JsonUtil.toJson(changed)
                 mutableState.value = mutableState.value.copy(profile = changed, error = null)
+                draftSave?.cancel()
+                draftSave = viewModelScope.launch {
+                    val json = withContext(parserDispatcher) { JsonUtil.toJson(changed) }
+                    savedState["profile"] = json
+                }
             }
             SocksEngineAction.Save -> save()
             SocksEngineAction.Delete -> delete()

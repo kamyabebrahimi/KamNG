@@ -10,7 +10,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 object NativeEngineProbe {
     suspend fun measure(context: Context, guid: String, result: ConfigResult, test: (String) -> Long): Long =
-        withTimeoutOrNull(20000) {
+        withTimeoutOrNull(if (result.nativeCores.any { it.engine == "cottendns" }) 200000 else 30000) {
             coroutineScope {
                 val cores = result.nativeCores
                 val ports = linkedMapOf<Int, Int>()

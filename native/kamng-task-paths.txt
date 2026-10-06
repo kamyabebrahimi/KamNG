@@ -30,12 +30,15 @@ V2rayNG/app/src/test/java/com/v2ray/ang/fmt/NativeEngineFmtTest.kt
 V2rayNG/app/src/test/java/com/v2ray/ang/ui/server/SocksEngineViewModelTest.kt
 native/README.md
 native/amneziawg/config.go
+native/amneziawg/config_order_test.go
 native/amneziawg/config_test.go
 native/amneziawg/go.mod
 native/amneziawg/go.sum
 native/amneziawg/main.go
 native/amneziawg/socks.go
+native/amneziawg/socks_integration_test.go
 native/amneziawg/socks_test.go
+native/amneziawg/tunnel_integration_test.go
 native/kamng-task-paths.txt
 scripts/build-kamng-engines.sh
 scripts/validate-kamng-engines.py

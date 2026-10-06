@@ -17,6 +17,7 @@ class SocksEngineViewModelTest {
         var failLoad = false
         var failSave = false
         var canDelete = true
+        var failDelete = false
         override suspend fun load(guid: String): ProfileItem? {
             if (failLoad) error("load failure")
             return profile
@@ -26,7 +27,10 @@ class SocksEngineViewModelTest {
             this.profile = profile
             return guid.ifBlank { "stable-guid" }
         }
-        override suspend fun delete(guid: String): Boolean = canDelete
+        override suspend fun delete(guid: String): Boolean {
+            if (failDelete) error("delete failure")
+            return canDelete
+        }
     }
     // Test dispatcher APIs have no stable replacement; reevaluate when kotlinx.coroutines.test stabilizes them.
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -76,5 +80,38 @@ class SocksEngineViewModelTest {
         assertEquals("keep", updated.nativeEngineConfig); assertEquals("UseIPv4", updated.targetStrategy)
         assertTrue(SocksEngineViewModel.isValid(updated))
         assertFalse(SocksEngineViewModel.isValid(updated.copy(serverPort = "70000")))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun failedLoadCannotOverwriteOrDeleteExistingIdentity() = runTest(dispatcher) {
+        val repository = Repository().apply { failLoad = true }
+        val model = SocksEngineViewModel(SavedStateHandle(), repository, dispatcher) { _, _ -> }
+        model.onAction(SocksEngineAction.Load("existing-guid", null)); advanceUntilIdle()
+        assertEquals(SocksEngineState.Error.LOAD, model.state.value.error)
+        model.onAction(SocksEngineAction.Change(SocksEngineAction.Field.NAME, "replacement"))
+        model.onAction(SocksEngineAction.Save)
+        model.onAction(SocksEngineAction.Delete); advanceUntilIdle()
+        assertEquals(SocksEngineState.Error.LOAD, model.state.value.error)
+        assertNull(model.state.value.savedGuid)
+        assertNull(model.state.value.deletedGuid)
+        assertNull(repository.profile)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun deleteSuccessDeniedAndFailureUseStableIdentity() = runTest(dispatcher) {
+        val repository = Repository().apply { profile = ProfileItem.create(EConfigType.SOCKS) }
+        val model = SocksEngineViewModel(SavedStateHandle(), repository, dispatcher) { _, _ -> }
+        model.onAction(SocksEngineAction.Load("existing-guid", null)); advanceUntilIdle()
+        repository.canDelete = false
+        model.onAction(SocksEngineAction.Delete); advanceUntilIdle()
+        assertEquals(SocksEngineState.Error.DELETE, model.state.value.error)
+        assertFalse(model.state.value.saving)
+        repository.failDelete = true
+        model.onAction(SocksEngineAction.Delete); advanceUntilIdle()
+        assertEquals(SocksEngineState.Error.DELETE, model.state.value.error)
+        assertNull(model.state.value.deletedGuid)
+        repository.failDelete = false; repository.canDelete = true
+        model.onAction(SocksEngineAction.Delete); advanceUntilIdle()
+        assertEquals("existing-guid", model.state.value.deletedGuid)
     }
 }

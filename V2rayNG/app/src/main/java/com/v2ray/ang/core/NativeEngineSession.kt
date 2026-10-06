@@ -51,7 +51,7 @@ class NativeEngineSession(
 
     private fun startOne(core: NativeEngineConfig) {
         core.validate()
-        check(!stopping) { "Native session stopped" }
+        check(!stopping && owner.isActive) { "Native session stopped" }
         // Reject occupied ports before launching, rather than mistaking another listener for this engine.
         java.net.ServerSocket().use { it.bind(InetSocketAddress("127.0.0.1", core.port)) }
         val directory = File(context.filesDir, "native-session-" + UUID.randomUUID())
@@ -80,6 +80,7 @@ class NativeEngineSession(
                     "-startup-mode", "resolvers", "-log-to-file=false", "-log-dir", directory.absolutePath,
                     "-local-dns-cache-persist-to-file=false")
             }
+            check(!stopping && owner.isActive) { "Native session stopped" }
             process = ProcessBuilder(args).directory(directory).redirectErrorStream(true).start()
             process.outputStream.close()
             processes.add(process)
@@ -120,6 +121,13 @@ class NativeEngineSession(
         stopping = true
         processes.forEach { it.destroyForcibly() }
         scope.cancel()
+    }
+
+    /** Reload runs on the setup worker; await release of only this session's listeners. */
+    fun closeAndWait() {
+        val owned = processes.toList()
+        close()
+        owned.forEach { it.waitFor(500, TimeUnit.MILLISECONDS) }
     }
 
     companion object {
