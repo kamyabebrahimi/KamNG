@@ -263,7 +263,7 @@ jobs:
 
     - name: Publish APK downloads
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
       run: |
         tag="kamng-test-${{ github.run_number }}"
