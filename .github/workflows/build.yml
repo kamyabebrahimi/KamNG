@@ -211,7 +211,8 @@ jobs:
       run: |
         printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
         chmod 755 gradlew
-        ./gradlew --no-daemon :app:testPlaystoreDebugUnitTest :app:testFdroidDebugUnitTest :app:compilePlaystoreDebugKotlin :app:compileFdroidDebugKotlin :app:lintPlaystoreDebug :app:lintFdroidDebug
+        ./gradlew --no-daemon :app:testPlaystoreDebugUnitTest :app:testFdroidDebugUnitTest :app:compilePlaystoreDebugKotlin :app:compileFdroidDebugKotlin
+          ./gradlew --no-daemon :app:lintPlaystoreDebug :app:lintFdroidDebug
         ./gradlew --no-daemon :app:assemblePlaystoreDebug :app:assembleFdroidDebug -PkamngVersion=0.2.0
 
     - name: Upload test reports
