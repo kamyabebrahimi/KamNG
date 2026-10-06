@@ -1,21 +1,30 @@
-name: Build APK
+name: KamNG APK
 
 on:
   workflow_dispatch:
-    inputs:
-      release_tag:
-        required: false
-        type: string
   push:
-    branches:
-      - master
+    branches: [my-releases]
+    paths:
+      - 'V2rayNG/**'
+      - '.github/workflows/build.yml'
+      - 'compile-*.sh'
+      - 'fetch-psiphon-servers.sh'
+      - '.gitmodules'
+      - 'AndroidLibXrayLite'
+      - 'hev-socks5-tunnel'
+      - 'aether'
 
 permissions:
   contents: write
 
+concurrency:
+  group: kamng-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       # The stable release aether's own release workflow built with; pinned so a new stable
       # release cannot change or break the release build on its own. Bump it together with
@@ -32,6 +41,13 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: '0'
+
+    # KAMNG_BOOTSTRAP_START
+    - name: Apply reviewed KamNG source patch
+      run: |
+        git apply --check .github/workflows/kamng-source.patch
+        git apply .github/workflows/kamng-source.patch
+    # KAMNG_BOOTSTRAP_END
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v4
@@ -178,105 +194,62 @@ jobs:
         distribution: 'temurin'
         java-version: '21'
 
-    - name: Decode Keystore
-      uses: timheuer/base64-to-file@v2.0.0
-      id: android_keystore
-      with:
-        fileName: "android_keystore.jks"
-        encodedString: ${{ secrets.APP_KEYSTORE_BASE64 }}
+    - name: Validate fork identity and presets
+      run: python3 scripts/validate-kamng.py
 
-    - name: Build APK
+    - name: Build and test KamNG
+      working-directory: V2rayNG
       run: |
-        cd ${{ github.workspace }}/V2rayNG
-        echo "sdk.dir=${ANDROID_HOME}" > local.properties
+        printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
         chmod 755 gradlew
-        # The JVM unit tests are the only automated check of the Kotlin logic; a failure stops the
-        # build before anything is assembled or signed.
-        ./gradlew :app:testPlaystoreDebugUnitTest
-        ./gradlew licenseFdroidReleaseReport
-        ./gradlew assembleRelease -PpattngVersion="${{ inputs.release_tag }}" -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} -Pandroid.injected.signing.store.password=${{ secrets.APP_KEYSTORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.APP_KEYSTORE_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.APP_KEY_PASSWORD }}
-    
-    - name: Check the native libraries in the APKs
+        ./gradlew --no-daemon :app:testPlaystoreDebugUnitTest :app:testFdroidDebugUnitTest :app:compilePlaystoreDebugKotlin :app:compileFdroidDebugKotlin
+        ./gradlew --no-daemon :app:assemblePlaystoreDebug :app:assembleFdroidDebug -PkamngVersion=0.1.0
+
+    - name: Upload test reports
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: KamNG-test-reports
+        path: |
+          V2rayNG/app/build/reports/tests/
+          V2rayNG/app/build/test-results/
+        if-no-files-found: ignore
+        retention-days: 14
+
+    - name: Verify APK native libraries
+      run: python3 scripts/validate-kamng.py --apk
+
+    - name: Upload installable test APKs
+      uses: actions/upload-artifact@v7
+      with:
+        name: KamNG-debug-APKs
+        path: V2rayNG/app/build/outputs/apk/*/debug/*.apk
+        if-no-files-found: error
+        retention-days: 14
+
+    - name: Build summary
       run: |
-        # Looked into as ZIP files: every ABI the Aether core is built for has to carry the core, its
-        # Psiphon client and its pluggable transport, and each APK's native files are listed for the record.
-        status=0
-        for apk in ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*.apk; do
-          entries=$(unzip -Z1 "$apk" | grep '^lib/' || true)
-          echo "$(basename "$apk"):"
-          echo "$entries" | sed 's/^/  /'
-          for abi in arm64-v8a armeabi-v7a x86_64; do
-            echo "$entries" | grep -q "^lib/$abi/" || continue
-            for lib in libaether.so libpsiphon-tunnel-core.so liblyrebird.so; do
-              if ! echo "$entries" | grep -qx "lib/$abi/$lib"; then
-                echo "::error::$(basename "$apk") lacks lib/$abi/$lib"
-                status=1
-              fi
-            done
-          done
-        done
-        exit $status
+        printf '%s\n' '### KamNG test build' 'Download **KamNG-debug-APKs** from this run’s Artifacts.' 'These are debug-signed test APKs. Release signing and device validation are still required.' >> "$GITHUB_STEP_SUMMARY"
 
-    - name: Upload arm64-v8a APK
-      uses: actions/upload-artifact@v7
-      if: ${{  success() }}
-      with:
-        name: arm64-v8a
-        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*arm64-v8a*.apk
-
-    - name: Upload armeabi-v7a APK
-      uses: actions/upload-artifact@v7
-      if: ${{  success() }}
-      with:
-        name: armeabi-v7a
-        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*armeabi-v7a*.apk
-
-    - name: Upload x86 APK
-      uses: actions/upload-artifact@v7
-      if: ${{  success() }}
-      with:
-        name: x86-apk
-        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*x86*.apk
-
-    - name: Upload universal APK
-      uses: actions/upload-artifact@v7
-      if: ${{ success() }}
-      with:
-        name: universal-apk
-        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*universal*.apk
-
-  sign-and-release:
-    needs: build
-    runs-on: ubuntu-26.04
-    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
-
-    steps:
-      - name: Download APK artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: release
-
-      - name: Sign APK files
-        run: |
-          printf '%s' "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-          KEY=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')
-          mkdir -p release-files
-
-          find release -type f -name '*.apk' | while read apk; do
-            cp "$apk" release-files/
-            gpg --batch --yes --local-user "$KEY" --detach-sign --output "release-files/$(basename "$apk").sig" "$apk"
-          done
-
-          gpg --armor --export "$KEY" > release-files/PattNG-public-key.asc
-
-      - name: Upload APKs, signatures and public key to release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          file: release-files/*
-          tag: ${{ inputs.release_tag }}
-          release_name: PattNG v${{ inputs.release_tag }}
-          body: "."
-          target_commit: ${{ github.sha }}
-          file_glob: true
-          prerelease: true
-          overwrite: true
+    # KAMNG_PROMOTION_START
+    - name: Save tested KamNG source to the fork
+      run: |
+        python3 - <<'PY'
+        from pathlib import Path
+        file = Path(".github/workflows/build.yml")
+        content = file.read_text(encoding="utf-8")
+        for start, end in [("    # KAMNG_BOOTSTRAP_START", "    # KAMNG_BOOTSTRAP_END"), ("    # KAMNG_PROMOTION_START", "    # KAMNG_PROMOTION_END")]:
+            begin = content.index(start)
+            finish = content.index(end, begin) + len(end)
+            content = content[:begin] + content[finish:]
+        file.write_text(content, encoding="utf-8")
+        Path(".github/workflows/kamng-source.patch").unlink()
+        PY
+        git config user.name 'github-actions[bot]'
+        git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+        git add -- 'V2rayNG/app/build.gradle.kts' 'V2rayNG/app/src/dev/res/values/strings.xml' 'V2rayNG/app/src/fdroid/res/values/strings.xml' 'V2rayNG/app/src/main/res/values-ar/strings.xml' 'V2rayNG/app/src/main/res/values-bn/strings.xml' 'V2rayNG/app/src/main/res/values-bqi-rIR/strings.xml' 'V2rayNG/app/src/main/res/values-fa/strings.xml' 'V2rayNG/app/src/main/res/values-ru/strings.xml' 'V2rayNG/app/src/main/res/values-vi/strings.xml' 'V2rayNG/app/src/main/res/values-zh-rCN/strings.xml' 'V2rayNG/app/src/main/res/values-zh-rTW/strings.xml' 'V2rayNG/app/src/main/res/values/strings.xml' 'V2rayNG/app/src/pre_release/res/values/strings.xml' 'V2rayNG/app/src/main/res/xml/shortcuts.xml' 'V2rayNG/app/src/fdroid/res/xml/shortcuts.xml' 'V2rayNG/app/src/main/java/com/v2ray/ang/AppConfig.kt' 'V2rayNG/app/src/main/assets/custom_routing_white_iran' 'scripts/validate-kamng.py' 'V2rayNG/app/src/test/java/com/v2ray/ang/handler/KamNGPresetTest.kt' 'README.md' '.github/workflows/build.yml' '.github/workflows/kamng-source.patch'
+        test -z "$(git diff --cached --name-only -- ':(glob)**/AGENTS.md' ':(glob)**/CLAUDE.md' ':(glob)**/GEMINI.md' .github/copilot-instructions.md)"
+        git diff --cached --check
+        git commit -m 'Apply tested KamNG identity and routing presets'
+        git push origin HEAD:my-releases
+    # KAMNG_PROMOTION_END
