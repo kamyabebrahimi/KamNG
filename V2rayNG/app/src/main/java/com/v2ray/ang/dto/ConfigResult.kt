@@ -11,4 +11,5 @@ data class ConfigResult(
     var localizedError: Boolean = false,
     /** The Aether core the configuration runs on, when it has an Aether outbound; the daemon starts it. */
     var aetherCore: AetherCore? = null,
+    var nativeCores: List<com.v2ray.ang.core.NativeEngineConfig> = emptyList(),
 )

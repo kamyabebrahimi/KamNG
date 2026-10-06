@@ -58,6 +58,8 @@ object CoreServiceManager {
 
     /** The Aether core the running configuration depends on, null when it has no Aether outbound. */
     private var currentAether: AetherCore? = null
+    private val nativeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var nativeSession: NativeEngineSession? = null
     private var processFinder: XrayProcessFinder? = null
     private var browserDialer: IDialerService? = null
 
@@ -172,7 +174,7 @@ object CoreServiceManager {
 
         LogUtil.i(AppConfig.TAG, "StartCore-Manager: Starting core loop for ${config.remarks}")
         val result = CoreConfigManager.getV2rayConfig(service, guid)
-        LogUtil.d(AppConfig.TAG, result.content)
+        // Configurations contain credentials; never log their serialized contents.
         if (!result.status) {
             if (result.localizedError) throw StartFailure(result.errorMessage)
             error(result.errorMessage.ifBlank { "Failed to get V2Ray config" })
@@ -217,10 +219,28 @@ object CoreServiceManager {
         AetherCoreManager.stop()
 
         try {
-            launchNativeCore(service, guid, config, aether, result.content, vpnInterface, isReload)
+            nativeSession?.close()
+            nativeSession = null
+            if (result.nativeCores.isNotEmpty()) {
+                lateinit var session: NativeEngineSession
+                session = NativeEngineSession(service, guid, nativeScope) {
+                    ContextCompat.getMainExecutor(service).execute {
+                        if (nativeSession === session && isRunning()) {
+                            MessageHelper.sendMsg2UI(service, AppConfig.MSG_STATE_START_FAILURE, service.getString(R.string.kamng_engine_stopped))
+                            serviceControl?.get()?.stopService()
+                        }
+                    }
+                }
+                nativeSession = session
+                session.start(result.nativeCores, result.content)
+            }
+            launchNativeCore(service, guid, config, aether, NativeEngineConfig.runtimeContent(result.content), vpnInterface, isReload)
         } catch (e: Exception) {
             // Setup failed after this attempt spawned the Aether process; release it with the rest.
             AetherCoreManager.stop()
+            nativeSession?.close()
+            nativeSession = null
+            if (isRunning()) coreController.stopLoop()
             throw e
         }
     }
@@ -356,6 +376,9 @@ object CoreServiceManager {
      */
     fun stopCoreLoop(): Boolean {
         connectionTestScope.coroutineContext.cancelChildren()
+        nativeSession?.close()
+        nativeSession = null
+        nativeScope.coroutineContext.cancelChildren()
         val service = getService() ?: return false
 
         networkMonitor?.unregister()
@@ -503,6 +526,9 @@ object CoreServiceManager {
             NotificationManager.cancelNotification()
             cancelAetherWarmUp()
             AetherCoreManager.stop()
+            nativeSession?.close()
+            nativeSession = null
+            nativeScope.coroutineContext.cancelChildren()
             try {
                 coreController.stopLoop()
             } catch (e: Exception) {

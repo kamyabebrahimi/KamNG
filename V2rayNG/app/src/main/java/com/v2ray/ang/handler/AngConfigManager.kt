@@ -43,6 +43,7 @@ object AngConfigManager {
             EConfigType.VMESS.protocolScheme to VmessFmt::parse,
             EConfigType.SHADOWSOCKS.protocolScheme to ShadowsocksFmt::parse,
             EConfigType.SOCKS.protocolScheme to SocksFmt::parse,
+            com.v2ray.ang.fmt.NativeEngineFmt.SCHEME to com.v2ray.ang.fmt.NativeEngineFmt::parse,
             AppConfig.SOCKS4 to SocksFmt::parse,
             AppConfig.SOCKS5 to SocksFmt::parse,
             EConfigType.TROJAN.protocolScheme to TrojanFmt::parse,
@@ -157,6 +158,7 @@ object AngConfigManager {
     private fun shareConfig(guid: String): String {
         try {
             val config = MmkvManager.decodeServerConfig(guid) ?: return ""
+            if (!config.nativeEngine.isNullOrBlank()) return com.v2ray.ang.fmt.NativeEngineFmt.toUri(config)
 
             return config.configType.protocolScheme + when (config.configType) {
                 EConfigType.VMESS -> VmessFmt.toUri(config)

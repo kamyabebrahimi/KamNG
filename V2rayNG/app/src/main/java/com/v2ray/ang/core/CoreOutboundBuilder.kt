@@ -39,7 +39,7 @@ object CoreOutboundBuilder {
         outbound ?: return null
         // PattNG: an Aether profile's outbound only reaches its core on the loopback address; its dialMode is
         // that of the exit-node its traffic leaves Xray by, see toOutboundAetherExit.
-        if (profileItem.configType != EConfigType.AETHER) applyDialMode(outbound, profileItem)
+        if (profileItem.configType != EConfigType.AETHER && profileItem.nativeEngine.isNullOrBlank()) applyDialMode(outbound, profileItem)
         applyTargetStrategy(outbound, profileItem)
         val ret = updateOutboundWithGlobalSettings(outbound)
         if (!ret) return null
@@ -237,9 +237,9 @@ object CoreOutboundBuilder {
         val outboundBean = createInitOutbound(EConfigType.SOCKS)
 
         outboundBean?.settings?.let { settings ->
-            settings.address = getServerAddress(profileItem)
+            settings.address = if (profileItem.nativeEngine.isNullOrBlank()) getServerAddress(profileItem) else AppConfig.LOOPBACK
             settings.port = profileItem.serverPort.orEmpty().toInt()
-            if (profileItem.username.isNotNullEmpty()) {
+            if (profileItem.nativeEngine.isNullOrBlank() && profileItem.username.isNotNullEmpty()) {
                 settings.user = profileItem.username.orEmpty()
                 settings.pass = profileItem.password.orEmpty()
             }
@@ -267,9 +267,9 @@ object CoreOutboundBuilder {
         val outboundBean = createInitOutbound(EConfigType.HTTP)
 
         outboundBean?.settings?.let { settings ->
-            settings.address = getServerAddress(profileItem)
+            settings.address = if (profileItem.nativeEngine.isNullOrBlank()) getServerAddress(profileItem) else AppConfig.LOOPBACK
             settings.port = profileItem.serverPort.orEmpty().toInt()
-            if (profileItem.username.isNotNullEmpty()) {
+            if (profileItem.nativeEngine.isNullOrBlank() && profileItem.username.isNotNullEmpty()) {
                 settings.user = profileItem.username.orEmpty()
                 settings.pass = profileItem.password.orEmpty()
             }

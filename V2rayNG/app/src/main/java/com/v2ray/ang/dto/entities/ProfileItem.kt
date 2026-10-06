@@ -68,6 +68,11 @@ data class ProfileItem(
     var bandwidthDown: String? = null,
     var bandwidthUp: String? = null,
 
+    /** KamNG userspace engines retain their complete source configuration. */
+    var nativeEngine: String? = null,
+    var nativeEngineConfig: String? = null,
+    var nativeEngineResolvers: String? = null,
+
     var policyGroupType: String? = null,
     var policyGroupSubscriptionId: String? = null,
     var policyGroupFilter: String? = null,

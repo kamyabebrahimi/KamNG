@@ -65,7 +65,7 @@ def validate_apks():
             entries = set(archive.namelist())
         abis = {entry.split("/")[1] for entry in entries if entry.startswith("lib/") and len(entry.split("/")) == 3}
         assert abis, f"No native libraries in {apk.name}"
-        required = ["libgojni.so", "libhev-socks5-tunnel.so", "libhevsockstun.so"]
+        required = ["libgojni.so", "libhev-socks5-tunnel.so", "libhevsockstun.so", "libkamng_awg.so", "libcottendns_client.so"]
         for abi in abis:
             names = required + (["libaether.so", "libpsiphon-tunnel-core.so", "liblyrebird.so"] if abi != "x86" else [])
             for name in names:

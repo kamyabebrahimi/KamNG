@@ -30,3 +30,9 @@ Not run until Actions completes: both flavor Gradle unit-test suites, Kotlin com
 ## Credits and license
 
 PattNG by patterniha and v2rayNG by 2dust and contributors are retained as upstream projects. Original license and attribution files are preserved. This fork retains the GNU GPL v3 license; see [LICENSE](LICENSE). Bundled native dependencies retain their respective licenses.
+
+## Native engine integration (0.2.0)
+
+AmneziaWG and CottenDNS are selectable in the SOCKS editor. See native/README.md for setup, pinned sources and architecture. The build runs native/JVM tests and packages both engines for all four ABIs.
+
+Not run: physical-device VPN, proxy-only and root connections; screen recreation, TalkBack, keyboard/D-pad and IME traversal; live server handover and stop/restart races. No Android device or emulator is attached.

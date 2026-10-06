@@ -123,6 +123,7 @@ object CoreConfigManager {
                 errorMessage = "Failed to build config context, config is empty"
             )
         val result = ConfigResult(true, configContext.guid, raw)
+        result.nativeCores = NativeEngineConfig.extract(raw)
 
         val json = JsonUtil.parseString(raw)?.takeIf { it.isJsonObject }?.asJsonObject ?: return result
 
@@ -556,11 +557,13 @@ object CoreConfigManager {
                 context.getString(R.string.toast_ech_outbound_tag_conflict, serialized.tag),
             )
         }
+        val nativeCores = NativeEngineConfig.resolve(configContext.resolvedOutbounds)
         return ConfigResult(
             status = true,
             guid = configContext.guid,
-            content = content,
+            content = NativeEngineConfig.attach(content, nativeCores),
             aetherCore = core,
+            nativeCores = nativeCores,
         )
     }
 

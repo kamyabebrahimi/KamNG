@@ -128,6 +128,13 @@ class RealPingWorkerService(
         if (!configResult.status) {
             return retFailure
         }
+        if (configResult.nativeCores.isNotEmpty()) {
+            suspend fun nativeProbe(): Long = com.v2ray.ang.core.NativeEngineProbe.measure(context, guid, configResult) { content ->
+                CoreNativeManager.measureOutboundDelay(content, SettingsManager.getDelayTestUrl(), batch)
+            }
+            val combinedAether = configResult.aetherCore
+            return if (combinedAether == null) nativeProbe() else AetherDelayTester.measureVia(context, guid, combinedAether, configResult.content) { _, _ -> nativeProbe() }
+        }
         val aether = configResult.aetherCore
         if (aether != null) {
             // The configuration reaches the internet through an Aether outbound, so it is measured behind
@@ -164,6 +171,7 @@ class RealPingWorkerService(
         val retFailure = -1L
 
         val config = MmkvManager.decodeServerConfig(guid) ?: return retFailure
+        if (!config.nativeEngine.isNullOrBlank()) return retFailure
         if (config.configType == EConfigType.AETHER) {
             return AetherDelayTester.reachability(config)
         }

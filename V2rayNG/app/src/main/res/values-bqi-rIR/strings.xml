@@ -757,4 +757,17 @@
         <item>شدید</item>
     </string-array>
 
+    <string name="kamng_engine_editor">SOCKS &amp; Native Engines</string>
+    <string name="kamng_engine_label">Connection engine</string>
+    <string name="kamng_engine_socks">SOCKS proxy</string>
+    <string name="kamng_engine_awg">AmneziaWG</string>
+    <string name="kamng_engine_cotten">CottenDNS</string>
+    <string name="kamng_engine_configuration">Engine configuration</string>
+    <string name="kamng_engine_resolvers">Resolver list (one endpoint per line)</string>
+    <string name="kamng_engine_help">Paste your complete server configuration. Routing rules remain managed by KamNG. Choose a unique local port for each engine profile.</string>
+    <string name="kamng_engine_load_failed">Could not load this profile.</string>
+    <string name="kamng_engine_invalid">Check the name, listener port and complete engine configuration. CottenDNS also requires a resolver list.</string>
+    <string name="kamng_engine_save_failed">Could not save this profile. Please retry.</string>
+    <string name="kamng_engine_delete_failed">Cannot delete this profile while it is selected or running.</string>
+    <string name="kamng_engine_stopped">The connection engine stopped. Check its configuration and reconnect.</string>
 </resources>
