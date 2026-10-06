@@ -115,9 +115,9 @@ index 00000000..c654926e
 +import kotlinx.coroutines.launch
 +import kotlinx.coroutines.test.runCurrent
 +import kotlinx.coroutines.test.runTest
-+import org.junit.Assert.assertEquals
-+import org.junit.Assert.assertTrue
-+import org.junit.Test
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
 +
 +@OptIn(ExperimentalCoroutinesApi::class)
 +class NativeEngineProbeTest {
