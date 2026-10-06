@@ -213,7 +213,7 @@ jobs:
         chmod 755 gradlew
         ./gradlew --no-daemon :app:testPlaystoreDebugUnitTest :app:testFdroidDebugUnitTest :app:compilePlaystoreDebugKotlin :app:compileFdroidDebugKotlin
           ./gradlew --no-daemon :app:lintPlaystoreDebug :app:lintFdroidDebug
-        ./gradlew --no-daemon :app:assemblePlaystoreDebug :app:assembleFdroidDebug -PkamngVersion=0.2.0
+        ./gradlew --no-daemon :app:assemblePlaystoreDebug :app:assembleFdroidDebug -PkamngVersion=0.2.1
 
     - name: Upload test reports
       if: always()
@@ -268,8 +268,8 @@ jobs:
         GH_REPO: ${{ github.repository }}
       run: |
         tag="kamng-test-${{ github.run_number }}"
-        printf '%s\n' 'KamNG 0.2.0 test build: PattNG/Xray, AmneziaWG and CottenDNS with routing presets.' '' 'Both flavor unit tests, Kotlin compilation, native TCP/UDP and encrypted-tunnel tests, CottenDNS tests, lint and APK native-library checks passed.' '' 'Not run: Android device VPN/proxy-only/root lifecycle, network handover and editor accessibility/recreation checks. No device or emulator is attached.' '' 'Debug-signed testing APKs. Export configurations before replacing an older test installation; runner-generated debug signatures may differ.' > "$RUNNER_TEMP/kamng-release-notes.txt"
+        printf '%s\n' 'KamNG 0.2.1 test build: PattNG/Xray, AmneziaWG and CottenDNS with routing presets. Automatically detects AmneziaWG .conf files, preserves advanced parameters, and adds direct AmneziaWG/CottenDNS editor entries.' '' 'Both flavor unit tests, Kotlin compilation, native TCP/UDP and encrypted-tunnel tests, CottenDNS tests, lint and APK native-library checks passed.' '' 'Not run: Android device VPN/proxy-only/root lifecycle, network handover and editor accessibility/recreation checks. No device or emulator is attached.' '' 'Debug-signed testing APKs. Export configurations before replacing an older test installation; runner-generated debug signatures may differ.' > "$RUNNER_TEMP/kamng-release-notes.txt"
         gh release create "$tag" V2rayNG/app/build/outputs/apk/*/debug/*.apk \
           --target "$(git rev-parse HEAD)" --prerelease --latest=false \
-          --title "KamNG 0.2.0 native engines - test build" \
+          --title "KamNG 0.2.1 native engine import - test build" \
           --notes-file "$RUNNER_TEMP/kamng-release-notes.txt"
